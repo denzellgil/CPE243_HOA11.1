@@ -1,0 +1,69 @@
+---
+
+- name: Harden the control node systems
+  hosts: all
+  become: yes
+  tasks:
+    - name: Disable root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin no'
+        state: present
+      notify: restart sshd
+
+    - name: Enable Firewall (Ubuntu)
+      service: 
+        name: ufw
+        state: started
+      when: ansible_distribution == "Ubuntu"
+    
+    - name: Enable Firewall (CentOS)
+      service:
+        name: firewalld
+        state: started
+      when: ansible_distribution == "CentOS"
+
+    
+    - name: Configure SSH
+      lineinfile: 
+        path: /etc/ssh/sshd_config
+        regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+      notify: restart sshd
+
+    - name: Install security packages for Ubuntu
+      apt: 
+        name: 
+          - ufw
+        state: latest
+      when: ansible_distribution == "Ubuntu"
+      
+    - name: Install security packages for CentOS
+      yum:
+        name: 
+          - firewalld
+        state: latest
+      when: ansible_distribution == "CentOS"
+    
+    - name: Install security update for Ubuntu
+      apt: 
+        name: '*'
+        state: latest
+        update_cache: yes
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Install security update for CentOS
+      yum:
+        name: '*'
+        state: latest
+        update_cache: yes
+      when: ansible_distribution == "CentOS"
+
+  handlers:
+    - name: restart sshd
+      service: 
+        name: sshd
+        state: restarted
+       
